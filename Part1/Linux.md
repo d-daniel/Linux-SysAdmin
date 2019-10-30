@@ -30,6 +30,7 @@ Use the option `-a` to append to an existing file:
 ```
 
 Useful options for grep command:
+
 | Option | Description |
 | ------ | ------ |
 | -i | ignore case |
