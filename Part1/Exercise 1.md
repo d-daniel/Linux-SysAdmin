@@ -128,7 +128,7 @@ export PATH=$PATH:/usr/local/go/bin
 source /etc/profile
 ```
 
-Optionally, instead of editing `/etc/profile`, go for `.bashrc` or `.bash_profile` and don't forget to run `source `~/.bashrc`.
+Optionally, instead of editing `/etc/profile`, go for `.bashrc` or `.bash_profile` and don't forget to run `source ~/.bashrc`.
 Test if go is working properly (I'll not go over the details here)...
 ___
 

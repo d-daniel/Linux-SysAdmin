@@ -84,6 +84,7 @@ IPADDR=192.168.56.101
 NETMASK=255.255.255.0
 
 > The default gateway is determined by the network scripts which parse the `/etc/sysconfig/network`.
+> Useful information: [VirtualBox Host-only adapter with static IP and Apache](https://superuser.com/questions/1115775/virtualbox-host-only-adapter-with-static-ip-and-apache) 
 
 Restart the service by typing `sudo systemctl restart network.service`. Try to `ping` this IP (192.168.56.101) -- it should be OK. Now you can `ssh` the host:
 ```sh
