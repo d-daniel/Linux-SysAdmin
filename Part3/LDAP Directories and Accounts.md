@@ -291,6 +291,44 @@ sudo yum install smbldap-tools
 sudo ldapadd -H ldapi:/// -f /usr/share/doc/samba-4.9.1/LDAP/samba.ldif
 sudo ldapsearch -H ldapi:/// -b cn=schema,cn=config "(objectClass=olcSchemaConfig)" dn
 ```
+Check the schema has been loaded:
+```sh
+sudo ldapsearch -H ldapi:/// -b cn=schema,cn=config dn
+```
+On the samba server (IP = 192.168.56.101), the LDAP settings look as follows:
+```sh
+## Have no idea why I added this line:
+	idmap config * : backend = tdb
+
+## LDAP Settings
+	ldap suffix = dc=training,dc=edu
+    ldap admin dn = cn=ldapadm,dc=training,dc=edu
+	passdb backend = ldapsam:ldaps://ldapserver.training.edu
+	ldap user suffix = ou=users
+	ldap group suffix = ou=groups
+	ldap ssl = off	
+```
+See that that the server is properly identified in file `/etc/smbldap-tools/smbldap.conf` (check the passwors in `smbldap_bind.conf` as well): 
+```sh
+# Master LDAP server: needed for write operations
+# Ex: masterLDAP=127.0.0.1
+# If not defined, parameter is set to "127.0.0.1"
+masterLDAP="ldaps://ldapserver.training.edu"
+
+# Master LDAP port
+# If not defined, parameter is set to "389"
+masterPort="636"
+
+# Use TLS for LDAP
+# If set to 1, this option will use start_tls for connection
+# (you should also used the port 389)
+# If not defined, parameter is set to "1"
+ldapTLS="0"
+```
+The run the command `sudo smbldap-config`; you'll see that the database changes if successful.
+Then populate the database: `sudo smbldap-populate -g 10000 -u 10000 -r 10000`. Add a user: `sudo smbldap-useradd -a -P -m username` and test.
+
+Reference: [Samba and LDAP](https://help.ubuntu.com/lts/serverguide/samba-ldap.html)
 
 # Appendix
 Useful documentation: [How To Configure OpenLDAP and Perform Administrative LDAP Tasks](https://www.digitalocean.com/community/tutorials/how-to-configure-openldap-and-perform-administrative-ldap-tasks)
@@ -299,4 +337,4 @@ Useful documentation: [How To Configure OpenLDAP and Perform Administrative LDAP
 > `H ldapi:///` - use UNIX-domain socket (`/var/run/ldapi`)
 > `-Y EXTERNAL` - use EXTERNAL mechanism for SASL (Simple Authentication and Security Layer)
 ___
-References: [Configuring OpenLDAP for Linux Authentication](https://tylersguides.com/guides/configuring-openldap-for-linux-authentication/), [LDAP Concepts & Overview](http://www.zytrax.com/books/ldap/ch2/index.html#overview)
+References: [Configuring OpenLDAP for Linux Authentication](https://tylersguides.com/guides/configuring-openldap-for-linux-authentication/), [LDAP Concepts & Overview](http://www.zytrax.com/books/ldap/ch2/index.html#overview)S-1-5-21-630452370-3450304508-3341112325
