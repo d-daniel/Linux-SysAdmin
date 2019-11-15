@@ -30,7 +30,7 @@ LDAP is a client-server arrangement for storing information (this includes acces
 ### Set hostname (optional)
 My LDAP server has IP 192.168.56.147 (see `/etc/sysconfig/network-scripts/ifcfg-enp0s3`). Hit `sudo vim /etc/hosts` and add the following line:
 ```sh
-192.168.56.147  ldapServer  ldapServer.training.edu 
+192.168.56.147  ldapserver  ldapserver.training.edu 
 ```
 Then, set the hostname:
 ```sh
@@ -39,7 +39,7 @@ sudo hostnamectl set-hostname ldapServer.training.edu
 Logout and login to see the changes.
 If you want to SSH from your computer, edit `~/.ssh/config`:
 ```sh
-Host ldapServer
+Host ldapserver
      HostName 192.168.56.147
      User daniela
      IdentityFile ~/.ssh/id_rsa
@@ -64,7 +64,7 @@ sudo ss -lntu | grep 389
 ```
 > Command `ss` is an utility to investigate sockets.
 
-Once installed, we have to generate a password for the LDAP user with command `slappasswd` (consider using SHA-512). Copy the password to the clipboard. Choose a suffix. A suffix is the root of your directory tree (`olcSuffix`). Before adding entries, configure a database (visit the website for a sample configuration file). Edit an LDIF file and paste the password in `oclRootPW`. Mine looks as follows (note the `olcRootDN`):
+Once installed, we have to generate a password for the LDAP user with command `slappasswd` (consider using SHA-512). Copy the password to the clipboard. Choose a suffix. A suffix is the root of your directory tree (`olcSuffix`). Before adding entries, configure a database (visit a website for a sample configuration file). Edit an LDIF file and paste the password in `oclRootPW`. My `db.ldif` file looks as follows (note the `olcRootDN`):
 ```sh
 dn: olcDatabase={2}hdb,cn=config
 changetype: modify
@@ -87,7 +87,7 @@ Next, load the file with `ldapmodify` command:
 ```sh
 sudo ldapmodify -H ldapi:/// -f db.ldif
 ```
-Replace `olcAccess` attribute to allow access to the LDAP database to the `ldapadm` user specified before (`cn=ldapadm,dc=training,dc=edu`). Another option is to set `olcAccess` to an OU of service accounts. My LDIF file (`monitor.ldif`) is like this:
+Replace `olcAccess` attribute to allow access to the LDAP database to the `ldapadm` user specified before (`cn=ldapadm,dc=training,dc=edu`). Another option is to set `olcAccess` to an organizational unit of service accounts. My `monitor.ldif` file is like this:
 ```sh
 dn: olcDatabase={1}monitor,cn=config
 changetype: modify
@@ -97,11 +97,11 @@ olcAccess: {0}to *
             by dn.base="cn=ldapadm,dc=training,dc=edu" read 
             by * none
 ```
-This is just the `cn=Monitor` subtree; experiment with ACL later. Use `ldapmodify` once more:
+This is just the `cn=monitor` subtree; I'll experiment with ACL for the databese itself later. Use `ldapmodify` once more:
 ```sh
 sudo ldapmodify -H ldapi:/// -f monitor.ldif 
 ```
-Check the suitability of the OpenLDAP slapd configuration WITH `sudo slaptest -v`. It's going to complain that there's no DB_CONFIG file found in directory `/var/lib/ldap`. Copy the sample database and change the ownership (in CentOS 7, the owner is `ldap:ldap`):
+Check the suitability of the OpenLDAP slapd configuration with `sudo slaptest -v`. It's going to complain that there's no DB_CONFIG file found in directory `/var/lib/ldap`. Copy the sample database and change the ownership (in CentOS 7, the owner is `ldap:ldap`):
 ```sh
 sudo cp /usr/share/openldap-servers/DB_CONFIG.example /var/lib/ldap/DB_CONFIG
 sudo chown -R ldap:ldap /var/lib/ldap/
@@ -121,16 +121,20 @@ objectClass: organization
 dc: training
 o: training
 
-dn: ou=Bioinformatics,dc=training,dc=edu
+dn: ou=groups,dc=training,dc=edu
 objectClass: organizationalUnit
-ou: Bioinformatics
+ou: groups
+
+dn: ou=system,dc=training,dc=edu
+objectClass: organizationalUnit
+ou: system
 
 dn: ou=users,dc=training,dc=edu
 objectClass: organizationalUnit
 ou: users
 ```
-Hit `sudo ldapadd -x -W -D "cn=ldapadm,dc=training,dc=edu" -f entry.ldif`. Note that `-x` is not to use SASL, `-W` is to prompt for authentication ans `-D` is to use `binddn` to bind to the LDAP directory. 
-Now create a user `s191529` in `users` with `sudo ldapadd -x -W -D "cn=ldapadm,dc=training,dc=edu" -f s191529.ldif`. File `s191529.ldif` looks like this:
+
+Hit `sudo ldapadd -W -D "cn=ldapadm,dc=training,dc=edu" -f entry.ldif`. Note that `-W` is to prompt for authentication and `-D` is to use `binddn` to bind to the LDAP directory. Create a user `s191529` in `users` with `sudo ldapadd -W -D "cn=ldapadm,dc=training,dc=edu" -f s191529.ldif`. File `s191529.ldif` looks like this:
 ```sh
 dn: uid=s191529,ou=users,dc=training,dc=edu
 objectClass: top
@@ -140,10 +144,9 @@ objectClass: shadowAccount
 cn: s191529
 uid: s191529
 uidNumber: 9999
-gidNumber: 100
+gidNumber: 9999
 homeDirectory: /home/s191529
 loginShell: /bin/bash
-gecos: CentOS 7 User
 userPassword: {crypt}x
 shadowLastChange: 17058
 shadowMin: 0
@@ -152,7 +155,7 @@ shadowWarning: 7
 ```
 Set a password for user `s191529` with:
 ```sh
-sudo ldappasswd -s <password> -W -D "cn=ldapadm,dc=training,dc=edu" -x "uid=s191529,ou=users,dc=training,dc=edu"
+sudo ldappasswd -s <password> -W -D "cn=ldapadm,dc=training,dc=edu" "cn=s191529,ou=users,dc=training,dc=edu"
 ```
 Check the user exists with:
 ```sh
@@ -160,7 +163,7 @@ sudo ldapsearch -x cn=s191529 -b dc=training,dc=edu
 ```
 Delete the user if necessary:
 ```sh
-sudo ldapdelete -W -D "cn=ldapadm,dc=training,dc=edu" "uid=s191529,ou=users,dc=training,dc=edu"
+sudo ldapdelete -W -D "cn=ldapadm,dc=training,dc=edu" "cn=s191529,ou=users,dc=training,dc=edu"
 ```
 Firewall:
 ```sh
@@ -188,7 +191,8 @@ Install required packages (if not already installed):
 ```sh
 sudo yum install -y openldap-clients nss-pam-ldapd
 ```
-Create a self-signed certificate for LDAP server. Generate both certificate and private key in `/etc/openldap/certs/ directory`. The step-by-step guide is here: [Configure OpenLDAP with SSL on CentOS 7 / RHEL 7](https://www.itzgeek.com/how-tos/linux/centos-how-tos/configure-openldap-with-ssl-on-centos-7-rhel-7.html)
+Create a __self-signed certificate__ for LDAP server. Generate both certificate and private key in `/etc/openldap/certs/ directory`. 
+A step-by-step guide is here: [Configure OpenLDAP with SSL on CentOS 7 / RHEL 7](https://www.itzgeek.com/how-tos/linux/centos-how-tos/configure-openldap-with-ssl-on-centos-7-rhel-7.html)
 
 Change ownership:
 ```sh
@@ -217,6 +221,11 @@ Edit the `/etc/sysconfig/slapd` file and configure OpenLDAP to listen over SSL:
 SLAPD_URLS="ldapi:/// ldap:/// ldaps:///"
 ```
 
+It might be useful to skip the certificate validation in a TLS session (custom CA-signed certificate was a headache). Add a line to file `/etc/openldap/ldap.conf`:
+```sh
+TLS_REQCERT allow
+```
+
 Restart the __slapd__ service:
 ```sh
 sudo systemctl restart slapd
@@ -233,7 +242,7 @@ sudo firewall-cmd --reload
 ```
 
 # Configuring LDAP over SSL (Client)
-Install required packages:
+Install required packages (if not installed yet):
 ```sh
 yum install -y openldap-clients nss-pam-ldapd
 ```
@@ -243,7 +252,7 @@ sudo authconfig --enableldap --enableldapauth --ldapserver=ldaps://ldapserver.tr
 ```
 Edit the `nslcd.conf` file. The below setting will disable the certificate validation done by clients as we are using a self-signed certificate:
 ```sh
-tls_reqcert allow
+TLS_REQCERT allow
 ```
 Restart the server and then verify:
 ```sh
@@ -251,7 +260,9 @@ sudo systemctl restart nslcd
 sudo getent passwd <user> 
 ```
 
-# Apache Directory Studio LDAP Browser
+> This method of encrypting LDAP connections is actually deprecated and the use of STARTTLS encryption is recommended instead. 
+
+# Apache Directory Studio LDAP Browser (GUI)
 Download the application from [Apache Directory](https://directory.apache.org/studio/). Extract it and run: `./ApacheDirectoryStudio`. 
 Connect Apache Directory Studio to your LDAP server. Click __File > New__ and then select __LDAP Connection__. 
 The __Network Parameter__ tab looks as follows:
@@ -269,7 +280,7 @@ Bind password: <password>
 And that's it!
 
 # Setting OpenLDAP ACLs
-First and most important: learn how to use `ldapsearch`. Second, to truly understand the `c=config`, go to `/etc/openldap/slapd.d` and see the contents of `config.ldif`: check the attribute __olcAccess__ is the root user (the one who can actually change the `cn=config`). Check the ACLs of the database:    
+First and most important: learn how to use `ldapsearch`. Second, to truly understand the `cn=config`, go to `/etc/openldap/slapd.d` and see the contents of `config.ldif`. Check the attribute __olcAccess__ includes the root user (the one who can actually change the `cn=config`). Check the ACLs of the database:    
 ```sh
 sudo ldapsearch -H ldapi:/// -b  cn=config 'olcDatabase=hdb'
 ```
@@ -282,59 +293,60 @@ olcAccess: {0}to attrs=userPassword by dn.subtree="ou=system,dc=training,dc=edu"
 olcAccess: {1}to * by dn.base="cn=overlord,ou=system,dc=training,dc=edu" manage by self write by * read
 ```
 
-> IMPORTANT: when setting ACLs, always place the most specific rules first, and only then the generic rules.
+> IMPORTANT: when setting ACLs, always place the most specific rules first, and only then the generic rules. LDAP is extremely sensible with respect to formatting and syntax when it comes to updating `olcAccess`.
 
 # Adding samba schema to the LDAP Server
-Download the tools to have that contain the LDIF file and load the schema:
+Download the tools (`smbldap-tools`) that contain the LDIF file and load the schema on the LDAP server:
 ```sh
 sudo yum install smbldap-tools
 sudo ldapadd -H ldapi:/// -f /usr/share/doc/samba-4.9.1/LDAP/samba.ldif
 sudo ldapsearch -H ldapi:/// -b cn=schema,cn=config "(objectClass=olcSchemaConfig)" dn
 ```
-Check the schema has been loaded:
-```sh
-sudo ldapsearch -H ldapi:/// -b cn=schema,cn=config dn
+You dont't need `smbldap-tools` anymore; remove it from the LDAP server machine. On the Samba server (IP = 192.168.56.101), add LDAP parameters to `/etc/samba/smb.conf`:
 ```
-On the samba server (IP = 192.168.56.101), the LDAP settings look as follows:
-```sh
-## Have no idea why I added this line:
-	idmap config * : backend = tdb
+[global]
+        workgroup = SAMBA
+        netbios name = CENTOS
+        server string = CentOS Samba Server
+        wins support = yes
+        name resolve order = bcast wins lmhosts
 
-## LDAP Settings
-	ldap suffix = dc=training,dc=edu
-    ldap admin dn = cn=ldapadm,dc=training,dc=edu
-	passdb backend = ldapsam:ldaps://ldapserver.training.edu
-	ldap user suffix = ou=users
-	ldap group suffix = ou=groups
-	ldap ssl = off	
+        passdb backend = ldapsam:ldaps://192.168.56.147
+        log level = 3
+        log file = /var/log/samba/log.%m
+        max log size = 50
+        ldap admin dn = cn=overlord,ou=system,dc=training,dc=edu
+        ldap group suffix = ou=groups
+        ldap passwd sync = Yes
+        ldap suffix = dc=training,dc=edu
+        ldap user suffix = ou=users
+        ldap ssl = off
+
+[training]
+        comment=shared directories for training
+        browsable=yes
+        path=/new_home
+        public=no
+        writable=yes
+        create mask=0770
+        Force create mode=0770
 ```
-See that that the server is properly identified in file `/etc/smbldap-tools/smbldap.conf` (check the passwors in `smbldap_bind.conf` as well): 
+Run `sudo smbpasswd -W` to let samba know the password for the admin dn. Check `smb` to see if you can connect to the LDAP server. If sucessful, notice that `DN: sambaDomainName=CENTOS,dc=training,dc=edu` is added to LDAP database (notice attribute SID). Migrate LDAP users that you want to include in LDAP-backed Samba with `smbpasswd`:
 ```sh
-# Master LDAP server: needed for write operations
-# Ex: masterLDAP=127.0.0.1
-# If not defined, parameter is set to "127.0.0.1"
-masterLDAP="ldaps://ldapserver.training.edu"
-
-# Master LDAP port
-# If not defined, parameter is set to "389"
-masterPort="636"
-
-# Use TLS for LDAP
-# If set to 1, this option will use start_tls for connection
-# (you should also used the port 389)
-# If not defined, parameter is set to "1"
-ldapTLS="0"
+sudo smbpasswd -a username
 ```
-The run the command `sudo smbldap-config`; you'll see that the database changes if successful.
-Then populate the database: `sudo smbldap-populate -g 10000 -u 10000 -r 10000`. Add a user: `sudo smbldap-useradd -a -P -m username` and test.
+In order for this to work, you have to add the user to the samba server as well. Chech the LDAP database to verify that samba-related attributes are now added to that user (SID, for example). Test connection on a Windows machine.
+
+> IMPORTANT: on every machine, set __TLS_REQCERT allow__ in `ldap.conf` file to skip certificate validation.
 
 Reference: [Samba and LDAP](https://help.ubuntu.com/lts/serverguide/samba-ldap.html)
 
 # Appendix
 Useful documentation: [How To Configure OpenLDAP and Perform Administrative LDAP Tasks](https://www.digitalocean.com/community/tutorials/how-to-configure-openldap-and-perform-administrative-ldap-tasks)
+Useful step-by-step guide: [Step by Step OpenLDAP Server Configuration on CentOS 7/RHEL 7](https://www.itzgeek.com/how-tos/linux/centos-how-tos/step-step-openldap-server-configuration-centos-7-rhel-7.html/2)
 
 > DO NOT edit the LDIF configuration file directly!
-> `H ldapi:///` - use UNIX-domain socket (`/var/run/ldapi`)
+> `-H ldapi:///` - use UNIX-domain socket (`/var/run/ldapi`)
 > `-Y EXTERNAL` - use EXTERNAL mechanism for SASL (Simple Authentication and Security Layer)
 ___
-References: [Configuring OpenLDAP for Linux Authentication](https://tylersguides.com/guides/configuring-openldap-for-linux-authentication/), [LDAP Concepts & Overview](http://www.zytrax.com/books/ldap/ch2/index.html#overview)S-1-5-21-630452370-3450304508-3341112325
+More references: [Configuring OpenLDAP for Linux Authentication](https://tylersguides.com/guides/configuring-openldap-for-linux-authentication/), [LDAP Concepts & Overview](http://www.zytrax.com/books/ldap/ch2/index.html#overview)
