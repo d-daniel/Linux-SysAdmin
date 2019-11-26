@@ -51,7 +51,7 @@ Install packages and check the service:
 ```sh
 sudo yum install openldap-clients openldap-servers
 sudo systemctl start slapd
-sudo systemctl ststus slapd
+sudo systemctl status slapd
 sudo systemctl enable slapd
 ```
 > OpenLDAP naming convention: server commands start with __slap__ and client commands start with __ldap__.
@@ -298,7 +298,7 @@ olcAccess: {1}to * by dn.base="cn=overlord,ou=system,dc=training,dc=edu" manage 
 # Adding samba schema to the LDAP Server
 Download the tools (`smbldap-tools`) that contain the LDIF file and load the schema on the LDAP server:
 ```sh
-sudo yum install smbldap-tools
+sudo yum install samba
 sudo ldapadd -H ldapi:/// -f /usr/share/doc/samba-4.9.1/LDAP/samba.ldif
 sudo ldapsearch -H ldapi:/// -b cn=schema,cn=config "(objectClass=olcSchemaConfig)" dn
 ```
@@ -340,6 +340,99 @@ In order for this to work, you have to add the user to the samba server as well.
 > IMPORTANT: on every machine, set __TLS_REQCERT allow__ in `ldap.conf` file to skip certificate validation.
 
 Reference: [Samba and LDAP](https://help.ubuntu.com/lts/serverguide/samba-ldap.html)
+
+# Configure LDAP Sync Replication
+Create a user who will have a read access to all LDAP objects in the __master server__. My LDIF file looks like this:
+```sh
+dn: cn=rpluser,dc=training,dc=edu
+objectClass: simpleSecurityObject
+objectClass: organizationalRole
+cn: rpluser
+description: LDAP server replicator
+userPassword: rpluser
+```
+Add the user to the server:
+```sh
+sudo ldapadd -x -W -D cn=ldapadm,dc=training,dc=edu -v -f create_repl_user.ldif
+```
+Enable `syncprov`. My `enable_sync_prov.ldif` looks like this:
+```sh
+dn: olcDatabase={2}hdb,cn=config
+changetype: modify
+delete: olcAccess
+olcAccess: {0}to attrs=userPassword by dn.subtree="ou=system,dc=training,dc=edu" write by self write by anonymous auth by * none
+olcAccess: {1}to * by dn.base="cn=overlord,ou=system,dc=training,dc=edu" manage by self write by * read
+-
+add: olcAccess
+olcAccess: {0}to attrs=userPassword by dn.subtree="ou=system,dc=training,dc=edu" write by self write by dn.base="cn=rpluser,dc=training,dc=edu" read by anonymous auth by * none
+olcAccess: {1}to * by dn.base="cn=overlord,ou=system,dc=training,dc=edu" manage by self write by * read
+
+dn: cn=module,cn=config
+changetype: add
+objectClass: olcModuleList
+cn: module
+olcModulePath: /usr/lib64/openldap
+olcModuleLoad: syncprov.la
+
+dn: olcOverlay=syncprov,olcDatabase={2}hdb,cn=config
+changetype: add
+objectClass: olcOverlayConfig
+objectClass: olcSyncProvConfig
+olcOverlay: syncprov
+olcSpCheckpoint: 100 10
+olcSpSessionlog: 100
+```
+Update the configuration on LDAP master server:
+```sh
+sudo ldapadd -Y EXTERNAL -H ldapi:/// -W -D cn=ldapadm,dc=training,dc=edu -v -f enable_sync_prov.ldif
+sudo ldapsearch -H ldapi:/// -b cn=config dn
+```
+
+Set up the slave server. I had to download LDAP, configure the database (`rootDN`, `oclRootPW`, `olcSuffix`, LDAP over SSL, etc) and add the schema files. Configure the replication (`enable_sync_consumer.ldif`):
+```sh
+dn: olcDatabase={2}hdb,cn=config
+changetype: modify
+add: olcSyncRepl
+olcSyncRepl: rid=147
+  provider="ldaps://192.168.56.147:636/"
+  bindmethod=simple
+  binddn="cn=rpluser,dc=training,dc=edu"
+  credentials=rpluser
+  searchbase="dc=training,dc=edu"
+  scope=sub
+  schemachecking=on
+  type=refreshAndPersist
+  retry="30 5 300 3"
+  interval=00:00:05:00
+  starttls=no
+  tls_reqcert=allow
+```
+Upload the configuration:
+```sh
+sudo ldapmodify -H ldapi:/// -f enable_sync_consumer.ldif
+```
+Restart `slapd` on the slave server. Those should work:
+```sh
+sudo ldapsearch -H ldaps:/// -D "cn=rpluser,dc=training,dc=edu" -W cn=overlord -b ou=system,dc=training,dc=edu
+sudo ldapsearch -H ldaps:/// -D "cn=rpluser,dc=training,dc=edu" -W cn=s191529 -b ou=users,dc=training,dc=edu
+```
+Reference: [How to configure OpenLDAP Master-Slave Replication](https://www.itzgeek.com/how-tos/linux/configure-openldap-master-slave-replication.html) 
+
+### Multi-Master Replication
+Multi-Master replication is a replication technique using Syncrepl to replicate data to multiple provider ("Master") Directory servers.
+__Pros:__
+1. If any provider fails, other providers will continue to accept updates;
+2. Avoids a single point of failure;
+3. Providers can be located in several physical sites, i.e., distributed across the network/globe;
+4. High availability.
+
+__Cons:__
+1. Breaks the data consistency guarantees of the directory model;
+2. If connectivity with a provider is lost because of a network partition, then "automatic failover" can just compound the problem;
+3. Typically, a particular machine cannot distinguish between losing contact with a peer because that peer crashed, or because the network link has failed;
+4. If a network is partitioned and multiple clients start writing to each of the "masters" then reconciliation will be a pain.
+
+For further details, see: http://www.openldap.org/doc/admin24/replication.html#N-Way%20Multi-Master%20replication
 
 # Appendix
 Useful documentation: [How To Configure OpenLDAP and Perform Administrative LDAP Tasks](https://www.digitalocean.com/community/tutorials/how-to-configure-openldap-and-perform-administrative-ldap-tasks)
