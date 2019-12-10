@@ -17,7 +17,7 @@ cat /etc/os-release
 ```
 To enable and install [ELRepo](http://elrepo.org/tiki/tiki-index.php), import the public key and install:
 ```sh
-sudo rpm --httpproxy http://<proxy>:<port> --import https://www.elrepo.org/RPM-GPG-KEY-elrepo.org
+sudo rpm --httpproxy http://proxy.swmed.edu:3128 --import https://www.elrepo.org/RPM-GPG-KEY-elrepo.org
 yum install https://www.elrepo.org/elrepo-release-7.0-4.el7.elrepo.noarch.rpm
 yum repolist
 ```
@@ -38,7 +38,7 @@ yum --disablerepo='*' --enablerepo=elrepo-kernel install kernel-ml
 ```
 and reboot. You'll notice the new kernel:
 ```sh
-cat /proc/version
+cat /proc/version   
 ```
 
 ### Apply security updates
@@ -72,7 +72,7 @@ sudo md5sum mysql80-community-release-el7-3.noarch.rpm
 ```
 The system should respond with a long string of letters and numbers. To update the software repositories, use the command:
 ```sh
-sudo rpm --httpproxy http://<proxy>:<port> -ivh mysql80-community-release-el7-3.noarch.rpm
+sudo rpm --httpproxy http://proxy.swmed.edu:3128 -ivh mysql80-community-release-el7-3.noarch.rpm
 ```
 Install MySQL Server:
 ```sh
@@ -128,8 +128,7 @@ export PATH=$PATH:/usr/local/go/bin
 source /etc/profile
 ```
 
-Optionally, instead of editing `/etc/profile`, go for `.bashrc` or `.bash_profile` and don't forget to run `source ~/.bashrc`.
-Test if go is working properly (I'll not go over the details here)...
+Optionally, instead of editing `/etc/profile`, go for `.bashrc` or `.bash_profile`. Test if go is working properly (I'll not go over the details here)...
 ___
 
 Install dependancies:
