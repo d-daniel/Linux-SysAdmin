@@ -223,16 +223,18 @@ echo "GATEWAYDEV=enp0s3" > /tmp/network.$$
 sudo wwsh -y file import /tmp/network.$$ --name network
 sudo wwsh -y file set network --path /etc/sysconfig/network --mode=0644 --uid=0
 # Add nodes to Warewulf data store
-sudo wwsh -y node new compnode0 --ipaddr=192.168.56.140 --hwaddr=08:00:27:B5:83:A1 -D enp0s3
-sudo wwsh -y node new compnode1 --ipaddr=192.168.56.141 --hwaddr=08:00:27:1D:22:AD -D enp0s3
-sudo wwsh -y node new compnode2 --ipaddr=192.168.56.142 --hwaddr=08:00:27:94:01:27 -D enp0s3
-sudo wwsh -y node new compnode3 --ipaddr=192.168.56.143 --hwaddr=08:00:27:42:2C:71 -D enp0s3
+sudo wwsh -y node new compnode0 --domain=training.edu --ipaddr=192.168.56.140 --hwaddr=08:00:27:B5:83:A1 -D enp0s3
+sudo wwsh -y node new compnode1 --domain=training.edu --ipaddr=192.168.56.141 --hwaddr=08:00:27:1D:22:AD -D enp0s3
+sudo wwsh -y node new compnode2 --domain=training.edu --ipaddr=192.168.56.142 --hwaddr=08:00:27:94:01:27 -D enp0s3
+sudo wwsh -y node new compnode3 --domain=training.edu --ipaddr=192.168.56.143 --hwaddr=08:00:27:42:2C:71 -D enp0s3
 # Required for "enp0s3" interface
 export kargs="${kargs} net.ifnames=1,biosdevname=1"
 sudo wwsh provision set --postnetdown=1 "comp*"
 # Define provisioning image for hosts
 sudo wwsh -y provision set "comp*" --vnfs=centos7 --bootstrap=`uname -r` --files=dynamic_hosts,passwd,group,shadow,slurm.conf,munge.key,network
 ```
+
+> __IMPORTANT:__ use `sudo wwsh help` to understant how to configure all the stuff...
 
 Restart `dhcpd` and update PXE:
 ```sh
