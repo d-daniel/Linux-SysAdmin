@@ -50,6 +50,9 @@ To limit root access to a system service, edit the file for the target service i
 ```sh
 auth	   required     pam_listfile.so  item=user  sense=deny  file=/etc/login/deny  onerr=succeed
 ```
+
+>The order is important because each module depends on the previous module on the stack. 
+
 Understanding the config directives:
 - __auth required pam_listfile.so:__ name of module required while authenticating users
 - __item=user:__ check the username
@@ -59,8 +62,36 @@ Understanding the config directives:
 
 Reference: [Controlling Root Access](https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/7/html/security_guide/sec-controlling_root_access)
 
+To check if a program is "PAM-aware" or not, use the `ldd` (List Dynamic Dependancies) command. Examples:
+```sh
+ldd /bin/su
+ldd /usr/sbin/crond | grep libpam.so
+```
+Added some lines to `/etc/pam.d/login` to restrict access:
+```sh
+auth	   required     pam_succeed_if.so user ingroup wheel
+auth       required     pam_succeed_if.so uid >= 1000
+```
+Reference: [Configure and use Linux-PAM](https://likegeeks.com/linux-pam-easy-guide/)
+
+### Configuring password using PAM
+The `pam_pwquality` module is used to check a password's strength against a set of rules. Add the following line to the password stack in the `/etc/pam.d/passwd` file:
+```sh
+password   required    pam_pwquality.so retry=2
+```
+Then edit the file `/etc/security/pwquality.conf` to improve quality as desired.
+
+### Set limits on system resources
+Edit the file `/etc/security/limits.conf`. This configuration is implemented via the `pam_limits.so` module which is called for various services configured in `/etc/pam.d/` like this:
+```sh
+session     required    pam_limits.so
+```
+
+Reference: [Desktop Security](https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/7/html/security_guide/chap-hardening_your_system_with_tools_and_services)
+
 # Firewalld
 In order from least trusted to most trusted, the predefined zones within __firewalld__ are: __drop__, __block__, __public__, __external__, __internal__, __dmz__, __work__, __home__ and __trusted__. Rules can be designated as either _permanent_ or _immediate_. Most `firewall-cmd` operations can take the `--permanent` flag to indicate that the non-ephemeral firewall should be targeted. 
+
 Verify that the service is running and reachable by typing:
 ```sh
 sudo firewall-cmd --state
