@@ -3,9 +3,7 @@
 ### Overview
 Service startup and maintenance tool: `systemd`. Hit `cat /etc/redhat-release` to get info on RHEL release. The RHEL file system is `ext`. The default database is MariaDB. For booting from the command line, type `systemctl set-default multi-user.target` and then reboot. 
 
-### Access subscription manager from the command line
-
-Type `subscription-manager-gui`. Hit `subscription-manager register --username <username> --password <password>` to register. To view existing subscriptions, hit `subscription-manaher list`.
+> What shell is being used? Find out with `echo $SHELL`, or run the command `ps` (process snapshot) with `-p` (pid) option: `ps -p $$` ($ returns the pid of the current process). Check valid login shells in `/etc/shells`.
 
 ### Command line basics
 Basic commands are `hostname`, `whoami` and `id -un`. Use the pipe `| less` a lot -- it's really useful! Use `head` and `tail` to display the beginning or the ending of a file.
@@ -37,6 +35,11 @@ To assign a directory to a group of user and allow users permissions, type:
 ```sh
 chown <user>:<group> <directory>
 chmod 2775 <directory>
+```
+Other options (use `u` for user, `g` for group, `o` for other and `a` for all):
+```sh
+chmod g+w <directory> # add write permission to group
+chmod g-w <directory> # remove write permission to group
 ```
 
 ### Filesystem
@@ -84,7 +87,6 @@ IPADDR=192.168.56.101
 NETMASK=255.255.255.0
 
 > The default gateway is determined by the network scripts which parse the `/etc/sysconfig/network`.
-> Useful information: [VirtualBox Host-only adapter with static IP and Apache](https://superuser.com/questions/1115775/virtualbox-host-only-adapter-with-static-ip-and-apache) 
 
 Restart the service by typing `sudo systemctl restart network.service`. Try to `ping` this IP (192.168.56.101) -- it should be OK. Now you can `ssh` the host:
 ```sh
@@ -96,12 +98,13 @@ Store the public key on the remote system in a `.ssh/authorized_keys directory`.
 ```sh
 ssh-keygen -t rsa
 ```
-you be prompted to provide a file location (default is /<home>/.ssh) and a password. 
+You'll be prompted to provide a file location (default is /home2/s191529/.ssh) and a password.
 
-Copy the public key to your user account using either SFTP or SCP:
+Copy the public key to your user account using either SFTP or SCP:  
 ```sh
 scp ~/.ssh/id_rsa.pub daniela@192.168.56.101:
 ```
+Or use the command `ssh-copy-id daniela@192.168.56.101`.
 
 On the remote machine, add the public key to the **authorized_keys** files in `.ssh` folder (create the file if it doesn't exist):
 ```sh

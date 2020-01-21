@@ -19,6 +19,10 @@ Prevent root login with this line:
 ```sh
 PermitRootLogin no
 ```
+To force key authentication:
+```sh
+PasswordAuthentication no
+```
 One can use wildcards for the _AllowUsers_ line on the `/etc/ssh/sshd_config` file:
 ```sh
 AllowUsers *@192.168.56.100
@@ -96,10 +100,15 @@ Reference: [Desktop Security](https://access.redhat.com/documentation/en-us/red_
 # IPTables
 Conceptually iptables is based around the concepts of rules and chains. A rule is a small piece of logic for matching packets. A chain is a series of rules that each packet is checked against, in order. Packets eventually end up in one of a predefined set of targets, which determine what is done with the packet. Each rule defines where to “jump” if a packet matches; this can be to another chain or a target. If the rule does not match, then the packet is checked against the next rule in the chain. Each chain has a policy, which is the target packets jump to if they reach the end of the chain without matching any rules.
 
+A packet will take the following path (assuming there are no custom rules):
+- Network -> PREROUTING -> INPUT -> Local System
+- Network -> PREROUTING -> FORWARD -> POSTROUTING -> Network
+- Local system -> OUTPUT -> POSTROUTING -> Network
+
 Download and start the service (note that `firewalld` will stop):
 ```sh
 sudo yum install iptables iptables-services
-sudo systemctl start iptables 
+sudo systemctl start iptables
 ```
 Tables (filter, nat, raw, mangle, security) are specified with the `-t` option. Some chains (of rules) are:
 - The INPUT chain handles packets that are destined to the local system.
@@ -119,7 +128,7 @@ Set a policy to accept packets by default:
 ```sh
 iptables -t filter -P INPUT ACCEPT
 ```
-Set a rule (`-A` option to add and `-D` to delete) that drops every packet from the source to detination ip addresses. Since no protocol is specified it will assume all by default:
+Set a rule (`-A` option to append, -I to insert and `-D` to delete) that drops every packet from the source to detination ip addresses. Since no protocol is specified it will assume all by default:
 ```sh
 iptables -A INPUT -s 192.168.57.100 -d 192.168.57.110 -j DROP
 ```
@@ -229,7 +238,11 @@ Using _firewalld_:
 ```sh
 sudo firewall-cmd --add-rich-rule 'rule family="ipv4" service name="ssh" source address="192.168.56.100" accept' --permanent
 ```
-Using TCP wrappers: edit the files `/etc/hosts.deny` and `/etc/hosts.allow`.
+Using TCP wrappers: edit the files `/etc/hosts.deny` and `/etc/hosts.allow`. TCP wrappers control access to services compiled with `libwrap` support. Use the `ldd` command:
+```sh
+ldd /usr/sbin/sshd | grep libwrap
+```
+
 > Rules in `hosts.allow` take precedence over rules specified in `hosts.deny`.
 
 Using SSH daemon configuration: add desired authentication methods after a `Match Address` in `sshd_config`. See: [Limit SSH access to specific clients by IP address](https://unix.stackexchange.com/questions/406245/limit-ssh-access-to-specific-clients-by-ip-address)
