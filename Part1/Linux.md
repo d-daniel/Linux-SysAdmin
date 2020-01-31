@@ -111,10 +111,25 @@ yum history undo <ID>
 ### Install Guest Additions
 Once you've updated yum and your user is an administrator, type:
 ```sh
-sudo yum groupinstall "Development Tools"
+sudo yum groupinstall "Development Tools" # "Development Libraries"
 ```
-
-Then click on "Devices" tab on Virtual Box and "Insert Guest Additions CD image". After that you'll have to mount the media manually:
+Install EPEL repo (required) like this:
+```sh
+sudo yum -y install epel-release
+```
+You shall be able to see installed repos using:
+```sh
+sudo yum repo list 
+```
+Just to make sure, install the prerequisites:
+```sh
+sudo yum install perl gcc dkms kernel-devel kernel-headers make bzip2
+```
+Confirm that kernel-headers installed are matching your currently running kernel:
+```sh
+ls -l /usr/src/kernels/$(uname -r)
+```
+Click on "Devices" tab on Virtual Box and "Insert Guest Additions CD image". After that you'll have to mount the media manually:
 ```sh
 blkid
 ```
@@ -128,22 +143,10 @@ or
 mkdir /media/iso
 mount /dev/cdrom /media/iso/
 ```
-Install EPEL repo (required) like this:
-```sh
-sudo yum -y install epel-release
-```
-You shall be able to see installed repos using:
-```sh
-sudo yum repo list 
-```
+
+This is a cool script to set the resolution: [xrandr.sh](https://gist.github.com/chirag64/7853413)
 
 **Reference**: [How To Install EPEL Repo on a CentOS and RHEL 7.x](https://www.cyberciti.biz/faq/installing-rhel-epel-repo-on-centos-redhat-7-x/)
-___
-
-And install the packages:
-```sh
-sudo yum install gcc kernel-devel kernel-headers dkms make bzip2 perl
-```
 ___
 For details, see [VirtualBox Guest Additions on Fedora 30/29, CentOS/RHEL 8/7/6/5](https://www.if-not-true-then-false.com/2010/install-virtualbox-guest-additions-on-fedora-centos-red-hat-rhel/).
 
@@ -174,7 +177,7 @@ You can manage services using `sudo systemctl start/stop/status/enable/disable <
 
 > Use `man crontab` and `man 5 crontab` for info on `cron` and its time format.
 
-### Updating from the command line (don't know if that's necessary)
+### Using Network Manager from CLI
 
 1) The first step, you must set 'NAT' connection in virtualbox. 
 2) Then, you're going to use a command line tool for controlling NetworkManager. Type the following:
@@ -183,4 +186,8 @@ nmcli d
 nmtui
 ```
 3) Restart network with command : service network restart 
-4) Restart centos7 with command : sudo reboot now 
+4) Restart centos7 with command : sudo reboot now
+
+---
+
+Install vscode: [How to Install Visual Studio Code on CentOS 7](https://linuxize.com/post/how-to-install-visual-studio-code-on-centos-7/)

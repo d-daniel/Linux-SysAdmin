@@ -38,7 +38,7 @@ yum --disablerepo='*' --enablerepo=elrepo-kernel install kernel-ml
 ```
 and reboot. You'll notice the new kernel:
 ```sh
-cat /proc/version   
+cat /proc/version
 ```
 
 ### Apply security updates
